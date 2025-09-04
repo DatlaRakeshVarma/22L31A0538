@@ -19,7 +19,15 @@ const StatisticsPage: React.FC = () => {
     loadUrls();
     
     // Set up interval to refresh data periodically
-    const interval = setInterval(loadUrls, 30000); // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadUrls();
+      // Clean up expired URLs periodically
+      const cleanedCount = urlService.cleanupExpiredUrls();
+      if (cleanedCount > 0) {
+        logger.info('Expired URLs cleaned during refresh', { count: cleanedCount });
+        loadUrls(); // Reload if any URLs were cleaned up
+      }
+    }, 10000); // Refresh every 10 seconds
     
     return () => clearInterval(interval);
   }, []);

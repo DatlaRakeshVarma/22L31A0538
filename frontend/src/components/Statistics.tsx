@@ -33,9 +33,17 @@ interface Props {
 
 const Statistics: React.FC<Props> = ({ urls }) => {
   const allClicks = urlService.getAllClicks();
-  const totalClicks = allClicks.length;
+  // Filter out clicks that don't have corresponding URLs (orphaned clicks)
+  const validClicks = allClicks.filter(click => urls.some(url => url.id === click.shortUrlId));
+  const totalClicks = validClicks.length;
   const totalUrls = urls.length;
   const activeUrls = urls.filter(url => url.isActive && new Date() < url.expiryDate).length;
+  
+  // Calculate average clicks per URL (only for URLs that have clicks)
+  const urlsWithClicks = urls.filter(url => url.clickCount > 0);
+  const avgClicksPerUrl = urlsWithClicks.length > 0 
+    ? Math.round(totalClicks / urlsWithClicks.length) 
+    : totalClicks; // If only one URL exists, show total clicks
 
   const getClicksForUrl = (urlId: string): ClickData[] => {
     return urlService.getClicksForUrl(urlId);
@@ -128,7 +136,7 @@ const Statistics: React.FC<Props> = ({ urls }) => {
                 </Typography>
               </Box>
               <Typography variant="h4" component="div">
-                {totalUrls > 0 ? Math.round(totalClicks / totalUrls) : 0}
+                {avgClicksPerUrl}
               </Typography>
             </CardContent>
           </Card>
@@ -206,12 +214,10 @@ const Statistics: React.FC<Props> = ({ urls }) => {
                     </TableCell>
                     
                     <TableCell align="center">
-                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                      <Typography variant="body2" fontWeight="medium" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
                         <Mouse fontSize="small" color="action" />
-                        <Typography variant="body2" fontWeight="medium">
-                          {url.clickCount}
-                        </Typography>
-                      </Box>
+                        {url.clickCount}
+                      </Typography>
                     </TableCell>
                     
                     <TableCell>
@@ -243,7 +249,7 @@ const Statistics: React.FC<Props> = ({ urls }) => {
       </Paper>
 
       {/* Recent Clicks */}
-      {allClicks.length > 0 && (
+      {validClicks.length > 0 && (
         <Paper elevation={3} sx={{ mt: 3 }}>
           <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <Typography variant="h6" component="h3" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -253,7 +259,7 @@ const Statistics: React.FC<Props> = ({ urls }) => {
           </Box>
           
           <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-            {allClicks.slice(-10).reverse().map((click, index) => {
+            {validClicks.slice(-10).reverse().map((click, index) => {
               const url = urls.find(u => u.id === click.shortUrlId);
               
               return (
@@ -266,20 +272,22 @@ const Statistics: React.FC<Props> = ({ urls }) => {
                           <Typography 
                             variant="body2" 
                             fontFamily="monospace"
-                            component="a"
-                            href={`${window.location.origin}/${url?.shortCode}`}
-                            target="_blank"
+                            component="span"
                             sx={{ 
-                              color: 'primary.main',
-                              textDecoration: 'none',
-                              '&:hover': { textDecoration: 'underline' }
+                              color: url ? 'primary.main' : 'text.disabled',
+                              cursor: url ? 'pointer' : 'default'
+                            }}
+                            onClick={() => {
+                              if (url) {
+                                window.open(`${window.location.origin}/${url.shortCode}`, '_blank');
+                              }
                             }}
                           >
-                            /{url?.shortCode}
+                            /{url?.shortCode || 'unknown'}
                           </Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Typography variant="body2" color="text.secondary">
-                              {url?.clickCount} clicks
+                              {url ? `${url.clickCount} clicks` : 'clicks'}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                               {formatDate(click.timestamp)}
@@ -287,6 +295,25 @@ const Statistics: React.FC<Props> = ({ urls }) => {
                           </Box>
                         </Box>
                       }
+                      secondary={url ? (
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ 
+                            maxWidth: 300,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            display: 'block'
+                          }}
+                        >
+                          {url.originalUrl}
+                        </Typography>
+                      ) : (
+                        <Typography variant="caption" color="text.disabled">
+                          URL data not found
+                        </Typography>
+                      )}
                     />
                   </ListItem>
                 </React.Fragment>
