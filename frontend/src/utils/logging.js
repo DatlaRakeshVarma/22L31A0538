@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAuthToken } from './auth';
+import { getAuthToken } from '../services/auth';
 
 const LOG_API_URL = 'http://28.244.56.144/evaluation-service/log';
 
